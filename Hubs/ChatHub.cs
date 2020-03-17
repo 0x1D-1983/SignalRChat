@@ -8,29 +8,19 @@ namespace SignalRChat.Hubs
 {
     public class ChatHub : Hub
     {
-        static Atom<ImmutableDictionary<Guid, string>> users =
-            new Atom<ImmutableDictionary<Guid, string>>(ImmutableDictionary<Guid, string>.Empty);
+        static ImmutableDictionary<Guid, string> users = ImmutableDictionary<Guid, string>.Empty;
 
         public override Task OnConnectedAsync()
         {
             var connectionId = new Guid(Context.ConnectionId);
             var user = Context.User;
 
-            var temp = users.Value;
-
-            if (users.Swap(d =>
-            {
-                if (d.ContainsKey(connectionId)) return d;
-
-                return d.Add(connectionId, user.Identity.Name);
-            }) != temp)
+            if (ImmutableInterlocked.TryAdd(ref users, connectionId, user.Identity.Name))
             {
                 // todo: register user connection
             }
 
             return base.OnConnectedAsync();
-
-            
         }
 
         public override Task OnDisconnectedAsync(Exception exception)
@@ -38,14 +28,9 @@ namespace SignalRChat.Hubs
             var connectionId = new Guid(Context.ConnectionId);
 
 
-            var temp = users.Value;
-
-            if (users.Swap(d =>
-            {
-                if (d.ContainsKey(connectionId)) return d.Remove(connectionId);
-
-                return d;
-            }) != temp)
+            string username;
+            
+            if (ImmutableInterlocked.TryRemove(ref users, connectionId, out username))
             {
                 //todo: de-register
             }
