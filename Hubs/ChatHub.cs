@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Threading.Tasks;
@@ -8,14 +9,14 @@ namespace SignalRChat.Hubs
 {
     public class ChatHub : Hub
     {
-        static ImmutableDictionary<Guid, string> users = ImmutableDictionary<Guid, string>.Empty;
+        static ConcurrentDictionary<Guid, string> users = new ConcurrentDictionary<Guid, string>();
 
         public override Task OnConnectedAsync()
         {
             var connectionId = new Guid(Context.ConnectionId);
             var user = Context.User;
 
-            if (ImmutableInterlocked.TryAdd(ref users, connectionId, user.Identity.Name))
+            if (users.TryAdd(connectionId, user.Identity.Name))
             {
                 // todo: register user connection
             }
@@ -30,7 +31,7 @@ namespace SignalRChat.Hubs
 
             string username;
             
-            if (ImmutableInterlocked.TryRemove(ref users, connectionId, out username))
+            if (users.TryRemove(connectionId, out username))
             {
                 //todo: de-register
             }
